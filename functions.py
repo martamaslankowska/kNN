@@ -1,8 +1,12 @@
 import numpy as np
 import pandas as pd
+from sklearn.metrics import f1_score, accuracy_score, classification_report
 from sklearn.model_selection import StratifiedKFold, GroupKFold, KFold
 from sklearn import preprocessing
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
+import warnings
+warnings.filterwarnings('ignore')
 
 
 def import_dataset(name, separator=',', header=None):
@@ -50,42 +54,29 @@ def standardize_data(x):
 
 
 def split_data(k, x, y, cross_validation_type):
-    cross_val = cross_validation_type(n_splits=k)
+    cross_val = cross_validation_type(n_splits=k, shuffle=True)
     cross_val.get_n_splits(x, y)
     return cross_val
 
 
+def fit_values(k, x, y, train_ind, test_ind, f='uniform', metric='euclidean'):
+    classifier = KNeighborsClassifier(n_neighbors=k, weights=f, metric=metric)
+    classifier.fit(x[train_ind], y[train_ind])
+    y_pred = classifier.predict(x[test_ind])
+    return y_pred, classifier
 
 
+def get_metrics(y_true, y_pred, avg='macro'):
+    # print(classification_report(y_true, y_pred))
+    f1 = f1_score(y_true, y_pred, average=avg, labels=np.unique(y_pred))
+    acc = accuracy_score(y_true, y_pred)
+    return acc, f1
 
 
-'''
-
-LOAD GLASS DATASET
-```{r}
-glass <- read.csv(file="./datasets/glass.csv", head=TRUE, sep=",", fileEncoding="UTF-8-BOM")
-glass <- glass[, -1]
-colnames(glass)[10] <- "class"
-```
-
-LOAD WINE DATASET
-```{r}
-wine <- read.csv(file="./datasets/wine.csv", head=FALSE)
-colnames(wine) <- c("class","alcohol","acid","ash","alcalinity","magnesium","phenols","flavanoids","nonphenols","procyanins","color","hue","OD","proline")
-
-head(wine)
-```
-
-LOAD DIABETES DATASET
-```{r}
-diabetes <- read.csv(file="./datasets/diabetes.csv", head=TRUE, sep=",", fileEncoding="UTF-8-BOM")
-colnames(diabetes)[9] <- "class"
-```
-
-LOAD WHOLESALES DATASET
-```{r}
-sales <- read.csv(file="./datasets/wholesale.csv", head=TRUE, sep=",", fileEncoding="UTF-8-BOM")
-```
-
-
-'''
+def weight_function(weights):
+    # print('Weights:', weights)
+    n, k = weights.shape
+    w = np.indices((n, k))[1]
+    w = (w.T + np.ones((n,))).T
+    w = np.cbrt(np.reciprocal(w))
+    return w
